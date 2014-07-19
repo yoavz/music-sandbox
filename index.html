@@ -1,0 +1,41 @@
+<html>
+    <head>
+        <title>Sheet Music Sandbox</title>
+        <!-- JQUERY/BOOTSTRAP -->
+        <script src="bower_components/jquery/dist/jquery.min.js" type="text/javascript"></script>
+        <link rel="stylesheet" type="text/css" href="bower_components/bootstrap/dist/css/bootstrap.min.css">
+        <script src="bower_components/bootstrap/dist/js/bootstrap.min.js" type="text/javascript"></script>
+        <link rel="stylesheet" type="text/css" href="bower_components/font-awesome/css/font-awesome.min.css">
+
+        <!-- VEXFLOW/MIDIJS -->
+        <script src="bower_components/vexflow/build/vexflow/vexflow-min.js" type="text/javascript"></script>
+
+        <!-- VEXFLOW/MIDIJS -->
+        <script src="lib/Base64.js" type="text/javascript"></script>
+        <script src="lib/base64binary.js" type="text/javascript"></script>
+        <script src="lib/MIDI.min.js" type="text/javascript"></script>
+    </head>
+
+    <body>
+        <div class="container">
+            <div>
+                <h1>Hello World!</h1>
+                <button id="add_note" type="button">add note</button>
+                <button id="add_stave" type="button">add stave</button>
+            </div>
+            <div>
+                <canvas id="sheet" width=900 height=1000></canvas>
+            </div>
+        </div>
+
+        <!-- YOAVZ -->
+        <script src="sandbox.js" type="text/javascript"></script>
+        <script src="main.js" type="text/javascript"></script>
+        <script>
+            jQuery(document).ready(function (){
+               init(); 
+            });
+        </script>
+    </body>
+
+</html>
