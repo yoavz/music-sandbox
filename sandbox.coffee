@@ -51,8 +51,8 @@ class Note
     toMidi: (tempo) ->
         [octaves_to_MIDI[@octave] + @value, @duration * tempo]
 
-    # returns a VexFlow Note representing this note
-    toVexFlow: () ->
+
+    toVexFlowKey: () ->
         _name = ""
         switch @value
            when Note.VALUES.C then _name = 'C'
@@ -62,20 +62,28 @@ class Note
            when Note.VALUES.G then _name = 'G'
            when Note.VALUES.A then _name = 'A'
            when Note.VALUES.B then _name = 'B'
-           # finish later...
-        _duration = ""
-        switch @duration
-           when Note.DURATIONS.EIGHTH then _duration = '?'
-           when Note.DURATIONS.QUARTER then _duration = 'q'
-           when Note.DURATIONS.HALF then _duration = 'h'
-           when Note.DURATIONS.WHOLE then _duration = 'w'
 
-        return new Vex.Flow.StaveNote({ keys: ["#{_name}/#{@octave}"], duration: _duration })
+        return "#{_name}/#{@octave}"
+
+    toVexFlowDuration: () ->
+        switch @duration
+           when Note.DURATIONS.EIGHTH then '?'
+           when Note.DURATIONS.QUARTER then 'q'
+           when Note.DURATIONS.HALF then 'h'
+           when Note.DURATIONS.WHOLE then 'w'
+        
+    # returns a VexFlow Note representing this note
+    toVexFlow: () ->
+        _key = @toVexFlowKey()
+        _duration = @toVexFlowDuration()
+
+        return new Vex.Flow.StaveNote({ keys: [_key], duration: _duration })
 
 class Track 
     @DEBUG = true 
     L = (args...) -> console?.log("(Track)", args...) if Track.DEBUG == true 
 
+    INTERVAL = 0.5
     beatsPerMeasure = 4
     notes = {}
     lastBeat = 0
@@ -94,11 +102,11 @@ class Track
         if beat > lastBeat
             lastBeat = beat
 
+    getNotes: () -> notes
     getNotesAtBeat: (beat) ->
         if beat of notes
             return notes[beat]
         else
-            L "Invalid beat requested: ", beat
             return []
 
     getVexFlowVoice: (measureNum) -> 
@@ -112,14 +120,26 @@ class Track
             resolution: Vex.Flow.RESOLUTION
         }) 
 
-        voice.setMode Vex.Flow.Voice.Mode.FULL
+        voice.setMode Vex.Flow.Voice.Mode.SOFT
 
         startingBeat = measureNum * beatsPerMeasure
         endingBeat = startingBeat + beatsPerMeasure
 
-        for i in [startingBeat..endingBeat] by 0.5
+        for i in [startingBeat..endingBeat-INTERVAL] by INTERVAL
             if i of notes
-                voice.addTickables((notes[i].map (note) -> note.toVexFlow()))
+                duration_to_keys = {}
+                for note in notes[i]
+                    duration = note.toVexFlowDuration()
+                    key = note.toVexFlowKey()
+                    if duration of duration_to_keys
+                        duration_to_keys[duration].push(key)
+                    else
+                        duration_to_keys[duration] = [key]
+                
+                for duration of duration_to_keys
+                    keys = duration_to_keys[duration]
+                    L keys, duration
+                    voice.addTickable(new Vex.Flow.StaveNote({ keys: keys, duration: duration}))
             else
                 continue
 
@@ -127,34 +147,51 @@ class Track
 
 class TrackPlayer
     @DEBUG = true 
+    @LOADED = false
     L = (args...) -> console?.log("(TrackPlayer)", args...) if TrackPlayer.DEBUG == true 
-    
-    constructor: (@track) ->
-        @pointer = 0 
-        @volume = 127
-        @velocity = 127
-        @interval = 500 
 
-    playNote: (note) ->
-        [midi_note, midi_length] = note.toMidi()
-        MIDI.setVolume(0, @volume)
-        MIDI.noteOn(0, midi_note, @volume, 0)
-        MIDI.noteOff(0, midi_note, midi_length)
+    constructor: (instrument, @tempo, @volume) ->
+        @pointer = 0 
+        @interval = 0.5 
+
+        MIDI.loadPlugin({
+            soundfontUrl: "./midi-js-soundfonts/FluidR3_GM/",
+            instrument: instrument,
+            callback: () => TrackPlayer.LOADED = true
+        })
 
     setTempo: (tempo) -> @tempo = tempo
     getTempo: () -> @tempo
 
-    playNext: () ->
-        notes = @track.getNotesAtBeat(@pointer)
-        for note in notes
-            @playNote(note)
+    setVolume: (volume) -> @volume = volume 
+    getVolume: () -> @volume
 
-        @pointer += interval
+    reset: () ->
+        @pointer = 0
+
+    playNote: (note) ->
+        [midi_note, midi_length] = note.toMidi(@tempo)
+        MIDI.noteOn(0, midi_note, @volume, 0)
+        MIDI.noteOff(0, midi_note, midi_length)
+
+    attachTrack: (track) ->
+        @track = track
+        @reset()
+
+
+    playNext: () ->
+        if (TrackPlayer.LOADED)
+            notes = @track.getNotesAtBeat(@pointer)
+            for note in notes
+                @playNote(note)
+            @pointer += @interval 
+
+        else
+            L "Instrument not yet loaded"
     
     play: () ->
         L "playing..."
-        setInterval(@playNext, @interval)
-        #@playNext()
+        setInterval(@playNext.bind(@), @interval*(1000.0/@tempo))
 
 class MusicSheet
     @DEBUG = true
@@ -177,12 +214,13 @@ class MusicSheet
         numMeasures = @track.getMeasures()
         
         for i in [0..numMeasures-1]
+            L "measure num: ", i
 
             # create a stave
             rowNum = Math.floor(i/@width)
             colNum = i % @width
             x = colNum*@getStaveWidth()
-            y = colNum*getStaveHeight()
+            y = rowNum*getStaveHeight()
 
             stave = new Vex.Flow.Stave(x, y, @getStaveWidth())
             stave.setContext(@ctx)
@@ -191,6 +229,8 @@ class MusicSheet
             stave.draw()
 
             voice = @track.getVexFlowVoice(i)
+
+            L voice
 
             @formatter.joinVoices([voice]).format([voice], @getStaveWidth())
             voice.draw(@ctx, stave)
