@@ -13,22 +13,17 @@ playNote = () ->
 
 jQuery -> 
     track = new Track()
-    player = new TrackPlayer("acoustic_grand_piano", 1.3, 127)
-    sheet = new MusicSheet(track, 3)
+    sheet = new MusicSheet(track)
+    
+    track.addNote(new Note('c', 4, 4), 0)
+    track.addNote(new Note('c', 4, 4), 1)
+    track.addNote(new Note('g', 4, 4), 2)
+    track.addNote(new Note('g', 4, 4), 3)
+    track.addNote(new Note('a', 4, 4), 4)
+    track.addNote(new Note('a', 4, 4), 5)
+    track.addNote(new Note('g', 4, 2), 6)
 
-    $("#add_note").on "click", -> console.log("Not implemented")
-    $("#add_stave").on "click", -> console.log("Not implemented")
-
-    track.addNote(new Note(Note.VALUES.C, 4, Note.DURATIONS.QUARTER), 0)
-    track.addNote(new Note(Note.VALUES.E, 4, Note.DURATIONS.QUARTER), 1)
-    track.addNote(new Note(Note.VALUES.G, 4, Note.DURATIONS.QUARTER), 2)
-    track.addNote(new Note(Note.VALUES.C, 5, Note.DURATIONS.QUARTER), 3)
-    track.addNote(new Note(Note.VALUES.C, 4, Note.DURATIONS.HALF), 4)
-    track.addNote(new Note(Note.VALUES.C, 4, Note.DURATIONS.HALF), 6)
-    track.addNote(new Note(Note.VALUES.E, 4, Note.DURATIONS.HALF), 6)
-    track.addNote(new Note(Note.VALUES.G, 4, Note.DURATIONS.HALF), 6)
-
-    player.attachTrack(track)
-    player.play()
+    $("#play").on "click", -> sheet.play()
+    $("#stop").on "click", -> sheet.stop() 
 
     sheet.draw()
